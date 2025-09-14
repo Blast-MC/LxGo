@@ -16,9 +16,10 @@ import tech.blastmc.lights.type.model.Hued;
 import tech.blastmc.lights.type.model.Mover;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 public class CueHandler {
 
@@ -60,10 +61,47 @@ public class CueHandler {
         interpolators.forEach(Interpolator::stop);
     }
 
-    public void stopConflicting(Cue cue) {
+    public void stopConflicting(Cue newCue) {
+        Set<Integer> colorChannels   = new HashSet<>();
+        Set<Integer> intensityChannels = new HashSet<>();
+        Set<Integer> directionChannels = new HashSet<>();
+
+        for (Entry<Integer, List<Permutation>> entry : newCue.getChannelDiffs().entrySet()) {
+            int channelId = entry.getKey();
+            for (Permutation perm : entry.getValue()) {
+                if (perm instanceof Permutation.Color)
+                    colorChannels.add(channelId);
+                if (perm instanceof Permutation.Intensity)
+                    intensityChannels.add(channelId);
+                if (perm instanceof Permutation.Yaw || perm instanceof Permutation.Pitch)
+                    directionChannels.add(channelId);
+            }
+        }
+
+        for (Entry<Integer, List<Permutation>> entry : newCue.getGroupDiffs().entrySet()) {
+            Group group = board.getGroups().get(entry.getKey());
+            if (group == null) continue;
+            List<Integer> groupChannels = group.getChannels();
+            for (Permutation perm : entry.getValue()) {
+                if (perm instanceof Permutation.Color)
+                    colorChannels.addAll(groupChannels);
+                if (perm instanceof Permutation.Intensity)
+                    intensityChannels.addAll(groupChannels);
+                if (perm instanceof Permutation.Yaw || perm instanceof Permutation.Pitch)
+                    directionChannels.addAll(groupChannels);
+            }
+        }
+
         interpolators.stream()
-                .filter(inter -> cue.getChannelDiffs().keySet().contains(inter.channel))
-                .filter(inter -> cue.getGroupDiffs().keySet().stream().map(i -> board.getGroups().get(i)).map(Group::getChannels).collect(Collectors.toSet()).contains(inter.channel))
+                .filter(inter -> {
+                    if (inter instanceof ColorInterpolator)
+                        return colorChannels.contains(inter.channel);
+                    else if (inter instanceof IntensityInterpolator)
+                        return intensityChannels.contains(inter.channel);
+                    else if (inter instanceof MoverInterpolator)
+                        return directionChannels.contains(inter.channel);
+                    return false;
+                })
                 .forEach(Interpolator::stop);
     }
 
