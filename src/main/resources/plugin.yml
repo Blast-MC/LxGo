@@ -1,0 +1,4 @@
+name: LxGo
+version: '${version}'
+main: tech.blastmc.lights.LxGo
+api-version: '1.21'

@@ -1,0 +1,14 @@
+.settings
+.idea/
+*.iml
+bin/
+target/
+build/
+.class
+.DS_Store
+.classpath
+.project
+dependency-reduced-pom.xml
+logs/
+javac.*.args
+.gradle/
