@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Data
-@SerializableAs("CueTimes")
+@SerializableAs("LxCueTimes")
 public class CueTimes implements ConfigurationSerializable {
 
     CueTimes(double intensity, double direction, double color, double autoFollow) {

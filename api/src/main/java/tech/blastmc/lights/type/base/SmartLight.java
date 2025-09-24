@@ -2,7 +2,6 @@ package tech.blastmc.lights.type.base;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -14,6 +13,7 @@ import org.bukkit.entity.Display;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.ItemDisplay.ItemDisplayTransform;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
@@ -24,23 +24,26 @@ import tech.blastmc.lights.type.model.Fixture;
 import tech.blastmc.lights.type.model.Hued;
 import tech.blastmc.lights.type.model.Mover;
 
-import java.awt.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 @Data
 @NoArgsConstructor
-@SerializableAs("SmartLight")
+@SerializableAs("LxSmartLight")
 public class SmartLight extends Fixture implements Mover, Hued {
 
     int color;
     int pitch;
     int yaw;
 
+    UUID baseUUID;
     ItemDisplay base;
+    UUID yokeUUID;
     ItemDisplay yoke;
+    UUID bodyUUID;
     ItemDisplay body;
+    UUID beamUUID;
     ItemDisplay beam;
 
     private World world;
@@ -56,12 +59,33 @@ public class SmartLight extends Fixture implements Mover, Hued {
 
     @Override
     public void handleIntensityChange(int intensity) {
+        if (intensity < 0) intensity = 0;
+        if (intensity > 100) intensity = 100;
 
+        ItemStack stack = beam.getItemStack();
+        ItemMeta meta = stack.getItemMeta();
+        meta.setItemModel(NamespacedKey.minecraft("minigames/blockparty/light/beam"));
+        meta.setCustomModelData(intensity);
+        stack.setItemMeta(meta);
+        beam.setItemStack(stack);
     }
 
     @Override
     public void handleColorChange(int color) {
+        int mask = color & 0xFFFFFF;
+        int inv  = 0xFFFFFF - mask;
 
+        int r = (inv >> 16) & 0xFF;
+        int g = (inv >> 8)  & 0xFF;
+        int b =  inv        & 0xFF;
+
+        float[] hsb = java.awt.Color.RGBtoHSB(r, g, b, null);
+        float hue180 = (hsb[0] + 0.5f) % 1.0f;
+        int effective = java.awt.Color.HSBtoRGB(hue180, hsb[1], hsb[2]) & 0xFFFFFF;
+
+        ItemStack stack = beam.getItemStack();
+        tintLeather(stack, Color.fromRGB(effective));
+        beam.setItemStack(stack);
     }
 
     @Override
@@ -81,13 +105,17 @@ public class SmartLight extends Fixture implements Mover, Hued {
         this.faceQ = faceBasis(face);
 
         this.base = spawnItemDisplay(new ItemStack(Material.PAPER), "minigames/blockparty/light/base");
+        this.baseUUID = this.base.getUniqueId();
         this.yoke = spawnItemDisplay(new ItemStack(Material.PAPER), "minigames/blockparty/light/yoke");
+        this.yokeUUID = this.yoke.getUniqueId();
         this.body = spawnItemDisplay(new ItemStack(Material.PAPER), "minigames/blockparty/light/fixture");
+        this.bodyUUID = this.body.getUniqueId();
 
         var beamItem = new ItemStack(Material.LEATHER_HORSE_ARMOR);
         tintLeather(beamItem, Color.WHITE);
-        this.beam = spawnItemDisplay(beamItem,  "minigames/blockparty/light/glow_100");
+        this.beam = spawnItemDisplay(beamItem,  "minigames/blockparty/light/beam");
         this.beam.setItemDisplayTransform(ItemDisplayTransform.GROUND);
+        this.beamUUID = this.beam.getUniqueId();
 
         for (var d : new ItemDisplay[]{base, yoke, body, beam}) {
             d.setInterpolationDelay(0);
@@ -99,6 +127,18 @@ public class SmartLight extends Fixture implements Mover, Hued {
         }
 
         applyTransforms();
+    }
+
+    @Override
+    public void handleEntityAddToWorld(UUID uuid) {
+        if (uuid.equals(baseUUID))
+            this.base = (ItemDisplay) this.world.getEntity(uuid);
+        if (uuid.equals(yokeUUID))
+            this.yoke = (ItemDisplay) this.world.getEntity(uuid);
+        if (uuid.equals(bodyUUID))
+            this.body = (ItemDisplay) this.world.getEntity(uuid);
+        if (uuid.equals(beamUUID))
+            this.beam = (ItemDisplay) this.world.getEntity(uuid);
     }
 
     @Override
@@ -198,10 +238,19 @@ public class SmartLight extends Fixture implements Mover, Hued {
         double w = (double) map.get("w");
         faceQ = new Quaternionf(x, y, z, w);
 
-        base = (ItemDisplay) world.getEntity(UUID.fromString((String) map.get("base")));
-        yoke = (ItemDisplay) world.getEntity(UUID.fromString((String) map.get("yoke")));
-        body = (ItemDisplay) world.getEntity(UUID.fromString((String) map.get("body")));
-        beam = (ItemDisplay) world.getEntity(UUID.fromString((String) map.get("beam")));
+        baseUUID = UUID.fromString((String) map.get("base"));
+        yokeUUID = UUID.fromString((String) map.get("yoke"));
+        bodyUUID = UUID.fromString((String) map.get("body"));
+        beamUUID = UUID.fromString((String) map.get("beam"));
+
+        if (this.world.getEntity(baseUUID) != null)
+            this.base = (ItemDisplay) this.world.getEntity(baseUUID);
+        if (this.world.getEntity(yokeUUID) != null)
+            this.yoke = (ItemDisplay) this.world.getEntity(yokeUUID);
+        if (this.world.getEntity(bodyUUID) != null)
+            this.body = (ItemDisplay) this.world.getEntity(bodyUUID);
+        if (this.world.getEntity(beamUUID) != null)
+            this.beam = (ItemDisplay) this.world.getEntity(beamUUID);
     }
 
     @Override
@@ -216,10 +265,10 @@ public class SmartLight extends Fixture implements Mover, Hued {
             put("y", faceQ.y);
             put("z", faceQ.z);
             put("w", faceQ.w);
-            put("base", base.getUniqueId().toString());
-            put("yoke", yoke.getUniqueId().toString());
-            put("body", body.getUniqueId().toString());
-            put("beam", beam.getUniqueId().toString());
+            put("base", baseUUID.toString());
+            put("yoke", yokeUUID.toString());
+            put("body", bodyUUID.toString());
+            put("beam", beamUUID.toString());
         }};
     }
 }

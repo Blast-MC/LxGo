@@ -2,24 +2,23 @@ package tech.blastmc.lights;
 
 import gg.projecteden.commands.Commands;
 import lombok.Getter;
+import org.bukkit.DyeColor;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.serialization.ConfigurationSerializable;
-import org.bukkit.configuration.serialization.ConfigurationSerialization;
-import org.bukkit.configuration.serialization.SerializableAs;
 import org.bukkit.plugin.java.JavaPlugin;
-import tech.blastmc.lights.Permutation.Color;
-import tech.blastmc.lights.Permutation.Effect;
-import tech.blastmc.lights.Permutation.Intensity;
-import tech.blastmc.lights.Permutation.Pitch;
-import tech.blastmc.lights.Permutation.Yaw;
-import tech.blastmc.lights.cue.Cue;
+import tech.blastmc.lights.cue.Permutation;
+import tech.blastmc.lights.cue.Permutation.Color;
+import tech.blastmc.lights.cue.Permutation.Effect;
+import tech.blastmc.lights.cue.Permutation.Intensity;
+import tech.blastmc.lights.cue.Permutation.Pitch;
+import tech.blastmc.lights.cue.Permutation.StopEffect;
+import tech.blastmc.lights.cue.Permutation.Yaw;
 import tech.blastmc.lights.cue.CueBuilder;
-import tech.blastmc.lights.cue.CueTimes;
 import tech.blastmc.lights.cue.CueTimesBuilder;
-import tech.blastmc.lights.map.Channel;
+import tech.blastmc.lights.effect.EffectBuilder;
+import tech.blastmc.lights.effect.EffectType;
+import tech.blastmc.lights.effect.OffsetType;
 import tech.blastmc.lights.map.ChannelList;
 import tech.blastmc.lights.map.Group;
-import tech.blastmc.lights.type.base.SmartLight;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +29,6 @@ public final class LxGo extends JavaPlugin {
     @Getter
     private static LxGo instance;
 
-    private Commands commands;
     public static List<LxBoard> boards;
 
     private LxGo() {
@@ -39,42 +37,25 @@ public final class LxGo extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        registerSerializable(LxBoard.class);
-        registerSerializable(Cue.class);
-        registerSerializable(CueTimes.class);
-        registerSerializable(Channel.class);
-        registerSerializable(Group.class);
-        registerSerializable(Yaw.class);
-        registerSerializable(Pitch.class);
-        registerSerializable(Color.class);
-        registerSerializable(Intensity.class);
-        registerSerializable(Effect.class);
-        registerSerializable(SmartLight.class);
+        LxBoard.initFileStore();
 
-        this.commands = new Commands(this)
-                .register(LxGoCommand.class);
+        new Commands(this)
+            .add(LxGoCommand.class)
+            .registerAll();
 
         loadConfig();
 
         if (boards.isEmpty())
-            boards.add(new LxBoard.Builder()
-                    .plugin(this)
-                    .name("test")
-                    .channels(new ChannelList())
-                    .cue(new CueBuilder(5)
-                            .channel(1, new Pitch(60), new Yaw(50))
-                            .times(new CueTimesBuilder()
-                                    .direction(1.5)
-                                    .build())
-                            .build())
-                    .build());
+            boards.add(getDefaultBoard());
         else
             for (LxBoard board : boards) {
                 board.setPlugin(this);
-                board.goToZero();
+                board.goToCue(0);
             }
 
-        System.out.println(boards.size() + " boards loaded");
+        registerEffects();
+
+        getLogger().info(boards.size() + " boards loaded");
     }
 
     private void loadConfig() {
@@ -94,16 +75,101 @@ public final class LxGo extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        this.commands.unregisterExcept();
+        Commands.unregisterAll();
 
         FileConfiguration config = getInstance().getConfig();
         config.set("boards", boards.stream().filter(Objects::nonNull).toList());
         saveConfig();
     }
 
-    public void registerSerializable(Class<? extends ConfigurationSerializable> clazz) {
-        String alias = clazz.getAnnotation(SerializableAs.class).value();
-        ConfigurationSerialization.registerClass(clazz, alias);
+
+
+    private void registerEffects() {
+        boards.get(0).getEffectRegistry().register(
+                new EffectBuilder()
+                        .id(1)
+                        .effectType(EffectType.DIRECTION)
+                        .durationInSeconds(4)
+                        .offsetType(OffsetType.OFFSET_ORDERED)
+                        .sampler(tick -> {
+                            final int PERIOD_TICKS = 80;
+                            final int YAW_AMP_DEG = 60;
+                            final int PITCH_AMP_DEG = 25;
+                            final double PHASE_SHIFT = Math.PI / 2.0;
+
+                            int t = Math.floorMod(tick, PERIOD_TICKS);
+                            double theta = (2.0 * Math.PI * t) / PERIOD_TICKS;
+
+                            int dYaw   = (int) Math.round(YAW_AMP_DEG   * Math.sin(theta));
+                            int dPitch = (int) Math.round(PITCH_AMP_DEG * Math.sin(2.0 * theta + PHASE_SHIFT));
+
+                            return List.of(new Permutation.Yaw(dYaw), new Permutation.Pitch(dPitch));
+                        })
+                        .build()
+        );
+
+        boards.get(0).getEffectRegistry().register(
+                new EffectBuilder()
+                        .id(2)
+                        .effectType(EffectType.COLOR)
+                        .offsetType(OffsetType.SYNCHRONIZED)
+                        .durationInSeconds(4)
+                        .sampler(tick -> {
+                            final int PERIOD_TICKS = 80;
+                            float phase = (tick % PERIOD_TICKS) / (float) PERIOD_TICKS;
+                            int desiredRgb = java.awt.Color.HSBtoRGB(phase, 1f, 1f);
+                            return List.of(new Permutation.Color(desiredRgb));
+                        })
+                        .build());
+    }
+
+    public LxBoard getDefaultBoard() {
+        LxBoard.Builder builder = new LxBoard.Builder()
+                .plugin(this)
+                .name("test")
+                .channels(new ChannelList())
+                .group(new Group(1, List.of(1, 2)))
+                .group(new Group(2, List.of(3, 4, 5)))
+                .cue(new CueBuilder(5)
+                    .group(1, new Yaw(90), new Pitch(70))
+                    .group(2, new Effect(1), new Effect(2), new Intensity(100))
+                    .times(new CueTimesBuilder()
+                        .color(.25)
+                        .intensity(.25)
+                        .direction(1)
+                        .build())
+                    .build());
+
+        for (DyeColor color : DyeColor.values()) {
+            int id = (color.ordinal() * 5) + 10;
+            builder.cue(new CueBuilder(id)
+                    .group(1, new Yaw(90), new Pitch(-70), new Color(color.getColor().asRGB()), new Intensity(100))
+                    .group(2, new Effect(1), new Effect(2))
+                    .times(new CueTimesBuilder()
+                        .intensity(0)
+                        .color(0)
+                        .direction(2)
+                        .autoFollow(0)
+                        .build())
+                .build()
+            );
+            builder.cue(new CueBuilder(id + 1)
+                    .group(2, new Color(color.getColor().asRGB()))
+                    .times(new CueTimesBuilder()
+                        .color(.25)
+                        .build())
+                    .build()
+            );
+            builder.cue(new CueBuilder(id + 2)
+                    .group(2, new StopEffect(1))
+                    .times(new CueTimesBuilder()
+                        .direction(.5)
+                        .build())
+                    .build()
+            );
+        }
+
+        return builder.build();
     }
 
 }

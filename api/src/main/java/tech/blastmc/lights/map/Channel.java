@@ -14,7 +14,7 @@ import java.util.Map;
 
 @Data
 @NoArgsConstructor
-@SerializableAs("ChannelList")
+@SerializableAs("LxChannelList")
 public class Channel implements ConfigurationSerializable {
 
     int id;

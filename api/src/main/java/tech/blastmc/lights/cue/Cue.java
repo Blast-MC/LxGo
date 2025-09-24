@@ -4,14 +4,13 @@ import lombok.Data;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.configuration.serialization.SerializableAs;
 import org.jetbrains.annotations.NotNull;
-import tech.blastmc.lights.Permutation;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Data
-@SerializableAs("Cue")
+@SerializableAs("LxCue")
 public class Cue implements ConfigurationSerializable {
 
     int id;
@@ -23,6 +22,7 @@ public class Cue implements ConfigurationSerializable {
         this.id = id;
         this.times = times;
         this.channelDiffs = channelDiffs;
+        this.groupDiffs = groupDiffs;
     }
 
     public Cue(Map<String, Object> map) {

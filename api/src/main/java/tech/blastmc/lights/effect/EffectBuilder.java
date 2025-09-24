@@ -1,6 +1,6 @@
 package tech.blastmc.lights.effect;
 
-import tech.blastmc.lights.Permutation;
+import tech.blastmc.lights.cue.Permutation;
 
 import java.util.List;
 import java.util.function.Function;

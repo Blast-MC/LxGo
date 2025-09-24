@@ -1,8 +1,5 @@
 package tech.blastmc.lights.cue;
 
-import tech.blastmc.lights.Permutation;
-import tech.blastmc.lights.map.Channel;
-
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
