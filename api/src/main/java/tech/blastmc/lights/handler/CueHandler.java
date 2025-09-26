@@ -348,29 +348,30 @@ public class CueHandler {
                     if (ie != null)
                         if (activeIntensityEffect(chId, ie.effect.getId()) == null) {
                             var inter = new IntensityEffectInterpolator(
-                                    plugin, chId, fixture, ie.effect, ie.periodTicks, ie.offsetTicks, currentIntensityOfChannel(chId, simulatedCue), simulatedCue);
+                                    board, chId, fixture, ie.effect, ie.periodTicks, ie.offsetTicks, currentIntensityOfChannel(chId, simulatedCue), simulatedCue);
                             inter.beginExpand(ie.expandSeconds);
                             interpolators.add(inter);
                         } // else: already running this effect on this channel → do nothing
                 } else if (!blockIntByOld && targetInt != null) {
                     interpolators.add(new IntensityInterpolator(
-                            plugin, chId, currentIntensityOfChannel(chId, simulatedCue), targetInt, times.getIntensity(), fixture, simulatedCue));
+                            board, chId, currentIntensityOfChannel(chId, simulatedCue), targetInt, times.getIntensity(), fixture, simulatedCue));
                 }
 
                 // ---- COLOR ----
                 if (fixture instanceof Hued hued) {
                     if (hasColEffect) {
                         ColEff ce = colorEffects.get(chId);
+                        board.debug("ColEff: " + ce);
                         if (ce != null)
                             if (activeColorEffect(chId, ce.effect.getId()) == null) {
                                 var inter = new ColorEffectInterpolator(
-                                        plugin, chId, fixture, ce.effect, ce.periodTicks, ce.offsetTicks, currentColorOfChannel(chId, simulatedCue), simulatedCue);
+                                        board, chId, fixture, ce.effect, ce.periodTicks, ce.offsetTicks, currentColorOfChannel(chId, simulatedCue), simulatedCue);
                                 inter.beginExpand(ce.expandSeconds);
                                 interpolators.add(inter);
                             }
                     } else if (!blockColByOld && targetColor != null) {
                         interpolators.add(new ColorInterpolator(
-                                plugin, chId, currentColorOfChannel(chId, simulatedCue), targetColor, times.getColor(), hued, simulatedCue));
+                                board, chId, currentColorOfChannel(chId, simulatedCue), targetColor, times.getColor(), hued, simulatedCue));
                     }
                 }
 
@@ -381,7 +382,7 @@ public class CueHandler {
                         if (de != null)
                             if (activeDirEffect(chId, de.effect.getId()) == null) {
                                 var inter = new DirectionEffectInterpolator(
-                                        plugin, chId, fixture, de.effect, de.periodTicks, de.offsetTicks, currentYawOfChannel(chId, simulatedCue), currentPitchOfChannel(chId, simulatedCue), simulatedCue);
+                                        board, chId, fixture, de.effect, de.periodTicks, de.offsetTicks, currentYawOfChannel(chId, simulatedCue), currentPitchOfChannel(chId, simulatedCue), simulatedCue);
                                 inter.beginExpand(de.expandSeconds);
                                 interpolators.add(inter);
                             }
@@ -389,7 +390,7 @@ public class CueHandler {
                         int endYaw = (targetYaw == null ? currentYawOfChannel(chId, simulatedCue) : targetYaw);
                         int endPitch = (targetPitch == null ? currentPitchOfChannel(chId, simulatedCue) : targetPitch);
                         interpolators.add(new DirectionInterpolator(
-                                plugin, chId, currentYawOfChannel(chId, simulatedCue), endYaw, currentPitchOfChannel(chId, simulatedCue), endPitch, times.getDirection(), mover, simulatedCue));
+                                board, chId, currentYawOfChannel(chId, simulatedCue), endYaw, currentPitchOfChannel(chId, simulatedCue), endPitch, times.getDirection(), mover, simulatedCue));
                     }
                 }
             }
@@ -407,7 +408,6 @@ public class CueHandler {
             }.runTaskLater(plugin, Math.max(1, Math.round(times.getAutoFollow() * 20)));
     }
 
-    // if light is in a 0 state for a perm, it doesn't get stopped here... the perm is missing (so probably something from the simulation)
     public void stopConflicting(Cue nextCue, CueTimes times, SimulatedCue simulatedCue) {
         board.debug("Stopping conflicting");
 
@@ -514,6 +514,7 @@ public class CueHandler {
                 boolean nextHasColorChange = colStaticCh.contains(ch) || !keepIds.isEmpty();
                 if (nextHasColorChange) {
                     board.debug("Beginning color falloff");
+                    board.debug("Sim: " + (simulatedCue != null));
 
                     int landRgb = targetColor.getOrDefault(ch, currentColorOfChannel(ch, simulatedCue));
                     cei.beginFalloffTo(landRgb, times.getColor(), simulatedCue);

@@ -2,6 +2,7 @@ package tech.blastmc.lights.handler.interpolators;
 
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import tech.blastmc.lights.LxBoard;
 import tech.blastmc.lights.cue.Permutation;
 import tech.blastmc.lights.cue.Permutation.Pitch;
 import tech.blastmc.lights.cue.Permutation.Yaw;
@@ -15,8 +16,8 @@ public class DirectionEffectInterpolator extends EffectInterpolator {
     private int basePitchStart;
     private int basePitchTarget;
 
-    public DirectionEffectInterpolator(Plugin plugin, int channel, Fixture fixture, Effect effect, int periodTicks, int offsetTicks, int startYaw, int startPitch, SimulatedCue simulatedCue) {
-        super(plugin, channel, 0, 0, 0, fixture, effect, periodTicks, offsetTicks, startYaw, 0, simulatedCue);
+    public DirectionEffectInterpolator(LxBoard board, int channel, Fixture fixture, Effect effect, int periodTicks, int offsetTicks, int startYaw, int startPitch, SimulatedCue simulatedCue) {
+        super(board, channel, 0, 0, 0, fixture, effect, periodTicks, offsetTicks, startYaw, 0, simulatedCue);
         this.basePitchStart = startPitch;
         this.basePitchTarget = 0;
     }
@@ -25,7 +26,8 @@ public class DirectionEffectInterpolator extends EffectInterpolator {
     public void beginFalloffTo(int targetYaw, int targetPitch, double seconds, SimulatedCue simulatedCue) {
         if (simulatedCue != null) {
             simulatedCue.record(channel, new Yaw(targetYaw), new Pitch(targetPitch));
-            done = true;
+            if (this.simulatedCue != null)
+                done = true;
             return;
         }
 

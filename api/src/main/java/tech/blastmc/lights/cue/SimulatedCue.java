@@ -7,6 +7,7 @@ import tech.blastmc.lights.cue.Permutation.Intensity;
 import tech.blastmc.lights.cue.Permutation.Pitch;
 import tech.blastmc.lights.cue.Permutation.StopEffect;
 import tech.blastmc.lights.cue.Permutation.Yaw;
+import tech.blastmc.lights.effect.EffectType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,8 +45,29 @@ public class SimulatedCue {
                 int value = stopEffect.getValue();
                 list.removeIf(p -> p instanceof Effect effect && effect.getValue() == value);
             }
-            else
+            else {
                 classes.add(perm.getClass());
+
+                list.removeIf(existing -> {
+                    if (!(existing instanceof Effect e))
+                        return false;
+
+                    var def = board.getEffectRegistry().get(e.getValue());
+                    if (def == null)
+                        return false;
+
+                    var type = def.getEffectType();
+
+                    if (perm instanceof Permutation.Intensity && type == EffectType.INTENSITY)
+                        return true;
+                    if (perm instanceof Permutation.Color     && type == EffectType.COLOR)
+                        return true;
+                    if ((perm instanceof Permutation.Yaw || perm instanceof Permutation.Pitch) && type == EffectType.DIRECTION)
+                        return true;
+
+                    return false;
+                });
+            }
             list.removeIf(p -> classes.contains(p.getClass()));
 
             list.add(perm);

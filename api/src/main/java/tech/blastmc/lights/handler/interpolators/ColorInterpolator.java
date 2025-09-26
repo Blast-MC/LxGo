@@ -2,6 +2,7 @@ package tech.blastmc.lights.handler.interpolators;
 
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import tech.blastmc.lights.LxBoard;
 import tech.blastmc.lights.cue.Permutation.Color;
 import tech.blastmc.lights.cue.SimulatedCue;
 import tech.blastmc.lights.type.model.Hued;
@@ -10,8 +11,8 @@ public class ColorInterpolator extends Interpolator {
 
     Hued hued;
 
-    public ColorInterpolator(Plugin plugin, int channel, int startingValue, int endingValue, double timeInSeconds, Hued hued, SimulatedCue simulatedCue) {
-        super(plugin, channel, startingValue, endingValue, timeInSeconds, simulatedCue);
+    public ColorInterpolator(LxBoard board, int channel, int startingValue, int endingValue, double timeInSeconds, Hued hued, SimulatedCue simulatedCue) {
+        super(board, channel, startingValue, endingValue, timeInSeconds, simulatedCue);
         this.hued = hued;
     }
 

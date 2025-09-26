@@ -15,6 +15,7 @@ import org.bukkit.entity.ItemDisplay.ItemDisplayTransform;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
@@ -59,6 +60,9 @@ public class SmartLight extends Fixture implements Mover, Hued {
 
     @Override
     public void handleIntensityChange(int intensity) {
+        if (beam == null)
+            return;
+
         if (intensity < 0) intensity = 0;
         if (intensity > 100) intensity = 100;
 
@@ -72,6 +76,9 @@ public class SmartLight extends Fixture implements Mover, Hued {
 
     @Override
     public void handleColorChange(int color) {
+        if (beam == null)
+            return;
+
         int mask = color & 0xFFFFFF;
         int inv  = 0xFFFFFF - mask;
 
@@ -187,6 +194,9 @@ public class SmartLight extends Fixture implements Mover, Hued {
             new Quaternionf().rotationX((float) Math.toRadians(90));
 
     private void setPose(ItemDisplay d, Location pos, Quaternionf rot, Vector3f scale) {
+        if (d == null)
+            return;
+
         d.teleport(pos);
         d.setTransformation(new Transformation(
                 new Vector3f(0, 0, 0),
@@ -242,15 +252,6 @@ public class SmartLight extends Fixture implements Mover, Hued {
         yokeUUID = UUID.fromString((String) map.get("yoke"));
         bodyUUID = UUID.fromString((String) map.get("body"));
         beamUUID = UUID.fromString((String) map.get("beam"));
-
-        if (this.world.getEntity(baseUUID) != null)
-            this.base = (ItemDisplay) this.world.getEntity(baseUUID);
-        if (this.world.getEntity(yokeUUID) != null)
-            this.yoke = (ItemDisplay) this.world.getEntity(yokeUUID);
-        if (this.world.getEntity(bodyUUID) != null)
-            this.body = (ItemDisplay) this.world.getEntity(bodyUUID);
-        if (this.world.getEntity(beamUUID) != null)
-            this.beam = (ItemDisplay) this.world.getEntity(beamUUID);
     }
 
     @Override
@@ -271,4 +272,16 @@ public class SmartLight extends Fixture implements Mover, Hued {
             put("beam", beamUUID.toString());
         }};
     }
+
+    public void handleSetPlugin(Plugin plugin) {
+        if (this.world.getEntity(baseUUID) != null)
+            this.base = (ItemDisplay) this.world.getEntity(baseUUID);
+        if (this.world.getEntity(yokeUUID) != null)
+            this.yoke = (ItemDisplay) this.world.getEntity(yokeUUID);
+        if (this.world.getEntity(bodyUUID) != null)
+            this.body = (ItemDisplay) this.world.getEntity(bodyUUID);
+        if (this.world.getEntity(beamUUID) != null)
+            this.beam = (ItemDisplay) this.world.getEntity(beamUUID);
+    }
+
 }

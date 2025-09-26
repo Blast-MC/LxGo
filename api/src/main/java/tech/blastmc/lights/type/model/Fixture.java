@@ -6,6 +6,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.BlockFace;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
+import org.bukkit.plugin.Plugin;
 
 import java.util.UUID;
 
@@ -22,5 +23,7 @@ public abstract class Fixture implements ConfigurationSerializable {
     public abstract World getWorld();
 
     public abstract void handleEntityAddToWorld(UUID uuid);
+
+    public abstract void handleSetPlugin(Plugin plugin);
 
 }

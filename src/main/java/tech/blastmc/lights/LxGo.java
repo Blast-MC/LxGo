@@ -39,6 +39,8 @@ public final class LxGo extends JavaPlugin {
     public void onEnable() {
         LxBoard.initFileStore();
 
+        if (Commands.getInstance() != null)
+            Commands.unregisterAll();
         new Commands(this)
             .add(LxGoCommand.class)
             .registerAll();
@@ -76,6 +78,7 @@ public final class LxGo extends JavaPlugin {
     @Override
     public void onDisable() {
         Commands.unregisterAll();
+        boards.forEach(LxBoard::shutdown);
 
         FileConfiguration config = getInstance().getConfig();
         config.set("boards", boards.stream().filter(Objects::nonNull).toList());
@@ -105,8 +108,7 @@ public final class LxGo extends JavaPlugin {
 
                             return List.of(new Permutation.Yaw(dYaw), new Permutation.Pitch(dPitch));
                         })
-                        .build()
-        );
+                        .build());
 
         boards.get(0).getEffectRegistry().register(
                 new EffectBuilder()
@@ -121,6 +123,30 @@ public final class LxGo extends JavaPlugin {
                             return List.of(new Permutation.Color(desiredRgb));
                         })
                         .build());
+
+        boards.get(0).getEffectRegistry().register(
+                new EffectBuilder()
+                        .id(3)
+                        .effectType(EffectType.INTENSITY)
+                        .offsetType(OffsetType.OFFSET_RANDOM)
+                        .durationInSeconds(6)
+                        .sampler(tick -> {
+                            final int MIN = 25;
+                            final int MAX = 60;
+                            final int PERIOD_TICKS = 120;
+
+                            double phase = (tick % PERIOD_TICKS) / (double) PERIOD_TICKS;
+                            double A = (MAX - MIN) / 2.0;
+                            double C = (MAX + MIN) / 2.0;
+                            double v = C + A * Math.sin(2 * Math.PI * phase - Math.PI / 2.0);
+
+                            int level = (int)Math.round(v);
+                            if (level < MIN) level = MIN;
+                            if (level > MAX) level = MAX;
+
+                            return java.util.List.of(new Permutation.Intensity(level));
+                        })
+                        .build());
     }
 
     public LxBoard getDefaultBoard() {
@@ -130,46 +156,62 @@ public final class LxGo extends JavaPlugin {
                 .channels(new ChannelList())
                 .group(new Group(1, List.of(1, 2)))
                 .group(new Group(2, List.of(3, 4, 5)))
-                .cue(new CueBuilder(5)
-                    .group(1, new Yaw(90), new Pitch(70))
-                    .group(2, new Effect(1), new Effect(2), new Intensity(100))
-                    .times(new CueTimesBuilder()
-                        .color(.25)
-                        .intensity(.25)
-                        .direction(1)
+                .cue(new CueBuilder(1)
+                        .group(2, new Effect(3))
+                        .times(new CueTimesBuilder()
+                                .intensity(.25)
+                                .build())
                         .build())
-                    .build());
+                .cue(new CueBuilder(5)
+                        .group(1, new Yaw(90), new Pitch(70))
+                        .group(2, new Effect(1), new Effect(2), new StopEffect(3), new Intensity(100))
+                        .times(new CueTimesBuilder()
+                                .color(.25)
+                                .intensity(.25)
+                                .direction(1)
+                                .build())
+                        .build());
 
         for (DyeColor color : DyeColor.values()) {
             int id = (color.ordinal() * 5) + 10;
             builder.cue(new CueBuilder(id)
-                    .group(1, new Yaw(90), new Pitch(-70), new Color(color.getColor().asRGB()), new Intensity(100))
-                    .group(2, new Effect(1), new Effect(2))
+                    .group(1, new Yaw(90), new Pitch(-70), new Color(getColor(color)), new Intensity(100))
+                    .group(2, new Effect(1), new Effect(2), new Intensity(100))
                     .times(new CueTimesBuilder()
-                        .intensity(0)
-                        .color(0)
-                        .direction(2)
-                        .autoFollow(0)
-                        .build())
-                .build()
+                            .intensity(0)
+                            .color(0)
+                            .direction(2)
+                            .autoFollow(0)
+                            .build())
+                    .build()
             );
             builder.cue(new CueBuilder(id + 1)
-                    .group(2, new Color(color.getColor().asRGB()))
+                    .group(2, new Color(getColor(color)))
                     .times(new CueTimesBuilder()
-                        .color(.25)
-                        .build())
+                            .color(.25)
+                            .build())
                     .build()
             );
             builder.cue(new CueBuilder(id + 2)
                     .group(2, new StopEffect(1))
                     .times(new CueTimesBuilder()
-                        .direction(.5)
-                        .build())
+                            .direction(.5)
+                            .build())
                     .build()
             );
         }
 
         return builder.build();
+    }
+
+    private static int getColor(DyeColor color) {
+        return switch (color) {
+            case WHITE -> DyeColor.BLACK.getColor().asRGB();
+            case LIGHT_GRAY -> DyeColor.GRAY.getColor().asRGB();
+            case GRAY -> DyeColor.LIGHT_GRAY.getColor().asRGB();
+            case BLACK -> DyeColor.WHITE.getColor().asRGB();
+            default -> color.getColor().asRGB();
+        };
     }
 
 }

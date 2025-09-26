@@ -4,6 +4,7 @@ import lombok.Data;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+import tech.blastmc.lights.LxBoard;
 import tech.blastmc.lights.cue.SimulatedCue;
 
 @Data
@@ -14,15 +15,17 @@ public abstract class Interpolator {
     int id;
     boolean done;
     int channel;
+    LxBoard board;
     Plugin plugin;
     int startingValue, endingValue;
     double timeInSeconds;
     BukkitTask task;
     SimulatedCue simulatedCue;
 
-    public Interpolator(Plugin plugin, int channel, int startingValue, int endingValue, double timeInSeconds, SimulatedCue simulatedCue) {
+    public Interpolator(LxBoard board, int channel, int startingValue, int endingValue, double timeInSeconds, SimulatedCue simulatedCue) {
         this.id = next_id++;
-        this.plugin = plugin;
+        this.board = board;
+        this.plugin = this.board.getPlugin();
         this.channel = channel;
         this.startingValue = startingValue;
         this.endingValue = endingValue;

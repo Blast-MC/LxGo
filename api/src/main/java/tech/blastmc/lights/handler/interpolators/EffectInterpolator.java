@@ -2,6 +2,7 @@ package tech.blastmc.lights.handler.interpolators;
 
 import lombok.Getter;
 import org.bukkit.plugin.Plugin;
+import tech.blastmc.lights.LxBoard;
 import tech.blastmc.lights.cue.Permutation;
 import tech.blastmc.lights.cue.SimulatedCue;
 import tech.blastmc.lights.effect.Effect;
@@ -25,9 +26,9 @@ public abstract class EffectInterpolator extends Interpolator {
     protected double ampStart = 1.0, ampEnd = 1.0;
     protected int ampTicks = 0, ampTick = 0;
 
-    public EffectInterpolator(Plugin plugin, int channel, int startingValue, int endingValue, double timeInSeconds,
+    public EffectInterpolator(LxBoard board, int channel, int startingValue, int endingValue, double timeInSeconds,
                               Fixture fixture, Effect effect, int periodTicks, int offsetTicks, int baseStart, int baseTarget, SimulatedCue simulatedCue) {
-        super(plugin, channel, startingValue, endingValue, timeInSeconds, simulatedCue);
+        super(board, channel, startingValue, endingValue, timeInSeconds, simulatedCue);
         this.fixture = fixture;
         this.effect = effect;
         this.periodTicks = Math.max(1, periodTicks);
@@ -47,11 +48,14 @@ public abstract class EffectInterpolator extends Interpolator {
     }
 
     public void beginFalloffTo(int target, double seconds, SimulatedCue simulatedCue) {
+        board.debug("Falloff: 1");
         if (simulatedCue != null) {
             recordFalloffCueToSim(simulatedCue, target);
-            done = true;
+            if (this.simulatedCue != null)
+                done = true;
             return;
         }
+        board.debug("Falloff: 2");
 
         // 1) Anchor base to its *current* value (no discontinuity)
         double sNow = (baseMorphTicks <= 0)

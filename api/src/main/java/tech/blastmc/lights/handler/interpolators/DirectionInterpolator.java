@@ -2,6 +2,7 @@ package tech.blastmc.lights.handler.interpolators;
 
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import tech.blastmc.lights.LxBoard;
 import tech.blastmc.lights.cue.Permutation.Pitch;
 import tech.blastmc.lights.cue.Permutation.Yaw;
 import tech.blastmc.lights.cue.SimulatedCue;
@@ -11,8 +12,8 @@ public class DirectionInterpolator extends Interpolator {
     Mover mover;
     int startingPitch, endingPitch;
 
-    public DirectionInterpolator(Plugin plugin, int channel, int startingYaw, int endingYaw, int startingPitch, int endingPitch, double timeInSeconds, Mover mover, SimulatedCue simulatedCue) {
-        super(plugin, channel, startingYaw, endingYaw, timeInSeconds, simulatedCue);
+    public DirectionInterpolator(LxBoard board, int channel, int startingYaw, int endingYaw, int startingPitch, int endingPitch, double timeInSeconds, Mover mover, SimulatedCue simulatedCue) {
+        super(board, channel, startingYaw, endingYaw, timeInSeconds, simulatedCue);
         this.mover = mover;
         this.startingPitch = startingPitch;
         this.endingPitch = endingPitch;

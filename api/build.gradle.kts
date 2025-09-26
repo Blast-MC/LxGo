@@ -5,8 +5,8 @@ publishing {
 
     repositories {
         maven {
-            name = "techSnapshots"
-            url = uri("https://sonatype.blastmc.tech/repository/maven-snapshots/")
+            name = "edenSnapshots"
+            url = uri("https://maven.projecteden.gg/snapshots")
             credentials(PasswordCredentials::class)
         }
     }

@@ -14,6 +14,7 @@ import org.bukkit.configuration.serialization.ConfigurationSerialization;
 import org.bukkit.configuration.serialization.SerializableAs;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 import tech.blastmc.lights.cue.Cue;
 import tech.blastmc.lights.cue.CueBuilder;
@@ -33,6 +34,7 @@ import tech.blastmc.lights.map.Channel;
 import tech.blastmc.lights.map.ChannelList;
 import tech.blastmc.lights.map.Group;
 import tech.blastmc.lights.type.base.SmartLight;
+import tech.blastmc.lights.type.model.Fixture;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -41,6 +43,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 @Data
@@ -65,11 +68,22 @@ public class LxBoard implements ConfigurationSerializable {
     }
 
     public void setPlugin(@NonNull Plugin plugin) {
+        if (!plugin.isEnabled())
+            return;
+
         this.plugin = plugin;
         if (this.listeners != null)
             HandlerList.unregisterAll(this.listeners);
-        this.listeners = new LxBoardListeners(this);
-        this.plugin.getServer().getPluginManager().registerEvents(listeners, plugin);
+
+        this.plugin.getServer().getScheduler().runTask(plugin, () -> {
+            this.listeners = new LxBoardListeners(this);
+            this.plugin.getServer().getPluginManager().registerEvents(listeners, plugin);
+
+            for (Channel channel : this.channels)
+                for (Fixture fixture : channel.getAddresses())
+                    if (fixture != null)
+                        fixture.handleSetPlugin(plugin);
+        });
     }
 
     private List<String> debugLines = new ArrayList<>();
@@ -81,7 +95,6 @@ public class LxBoard implements ConfigurationSerializable {
     private ListIterator<Cue> cueIterator;
 
     private List<Interpolator> interpolators = new ArrayList<>();
-    private List<CueHandler> cueHandlers = new ArrayList<>();
 
     private EffectRegistry effectRegistry = new EffectRegistry();
 
@@ -94,7 +107,6 @@ public class LxBoard implements ConfigurationSerializable {
 
     public void go() {
         if (cueIterator == null) {
-            cueHandlers.clear();
             cueIterator = cues.listIterator();
         }
         if (cueIterator.hasNext()) {
@@ -126,21 +138,20 @@ public class LxBoard implements ConfigurationSerializable {
         if (cueNum == fromCueNum && cueNum != 0)
             return;
 
-        if (!cueHandlers.isEmpty() && !interpolators.isEmpty() && !isNext) {
+        if (!interpolators.isEmpty() && !isNext) {
             SimulatedCue simulatedCue = new SimulatedCue(this);
 
             if (cueNum < fromCueNum) {
                 debug("Creating backwards state");
 
-                List<CueHandler> cueHandlers = new ArrayList<>();
                 List<Interpolator> interpolators = new ArrayList<>();
                 ListIterator<Cue> cueIterator = cues.listIterator();
-                handle(getCueZero(), times, simulatedCue, cueHandlers, interpolators);
+                handle(getCueZero(), times, simulatedCue, interpolators);
                 while (cueIterator.hasNext()) {
                     Cue cue = cueIterator.next();
                     if (cue.getId() > cueNum)
                         break;
-                    handle(cue, times, simulatedCue, cueHandlers, interpolators);
+                    handle(cue, times, simulatedCue, interpolators);
                 }
             } else {
                 for (Cue cue : cues) {
@@ -148,13 +159,13 @@ public class LxBoard implements ConfigurationSerializable {
                         continue;
                     if (cue.getId() > cueNum)
                         break;
-                    handle(cue, times, simulatedCue, cueHandlers, interpolators);
+                    handle(cue, times, simulatedCue, interpolators);
                 }
             }
 
             Cue cue = simulatedCue.toCue();
             debug("Cue: " + cue);
-            handle(cue, times, null, cueHandlers, interpolators);
+            handle(cue, times, null, interpolators);
         }
         else {
             Cue cue = getCueZero();
@@ -167,7 +178,7 @@ public class LxBoard implements ConfigurationSerializable {
                 }
             }
             debug("Cue: " + cue);
-            handle(cue, times, null, cueHandlers, interpolators);
+            handle(cue, times, null, interpolators);
         }
 
         if (isDebug())
@@ -186,25 +197,21 @@ public class LxBoard implements ConfigurationSerializable {
         currentCue = cueNum;
     }
 
-    public void handle(Cue cue, CueTimes times, SimulatedCue sim, List<CueHandler> cueHandlers, List<Interpolator> interpolators) {
+    public void handle(Cue cue, CueTimes times, SimulatedCue sim, List<Interpolator> interpolators) {
         if (sim != null)
             debug("Simulating cue: " + cue.getId());
 
-        for (CueHandler ch : cueHandlers)
-            ch.stopConflicting(cue, times, sim);
+        CueHandler handler = new CueHandler(plugin, this, cue, times, interpolators, sim);
+        handler.stopConflicting(cue, times, sim);
 
-        debug("Interpolators: " + interpolators.size() + ", CueHandlers: " + cueHandlers.size());
+        debug("Interpolators: " + interpolators.size());
 
         interpolators.removeIf(Interpolator::isDone);
-        cueHandlers.removeIf(CueHandler::isDone);
 
         debug("Cleaned");
-        debug("Interpolators: " + interpolators.size() + ", CueHandlers: " + cueHandlers.size());
+        debug("Interpolators: " + interpolators.size());
 
-        CueHandler handler = new CueHandler(plugin, this, cue, times, interpolators, sim);
         handler.start();
-
-        cueHandlers.add(handler);
     }
 
     public void shutdown() {
@@ -333,4 +340,25 @@ public class LxBoard implements ConfigurationSerializable {
         private String key;
     }
 
+    @Override
+    public String toString() {
+        return "LxBoard{" +
+                "name='" + name + '\'' +
+                ", cues=" + cues +
+                ", channels=" + channels +
+                ", groups=" + groups +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        LxBoard lxBoard = (LxBoard) o;
+        return Objects.equals(name, lxBoard.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(name);
+    }
 }

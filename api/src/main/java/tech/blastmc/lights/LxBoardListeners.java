@@ -15,7 +15,9 @@ public record LxBoardListeners(LxBoard board) implements Listener {
         UUID uuid = event.getEntity().getUniqueId();
         for (Channel channel : this.board.getChannels())
             for (Fixture fixture : channel.getAddresses()) {
-                if (!fixture.getWorld().equals(event.getWorld()))
+                if (fixture == null)
+                    continue;
+                if (fixture.getWorld() == null || !fixture.getWorld().equals(event.getWorld()))
                     return;
                 fixture.handleEntityAddToWorld(uuid);
             }

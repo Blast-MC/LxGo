@@ -2,6 +2,7 @@ package tech.blastmc.lights.handler.interpolators;
 
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import tech.blastmc.lights.LxBoard;
 import tech.blastmc.lights.cue.Permutation;
 import tech.blastmc.lights.cue.Permutation.Color;
 import tech.blastmc.lights.cue.SimulatedCue;
@@ -13,17 +14,19 @@ import java.util.Objects;
 
 public class ColorEffectInterpolator extends EffectInterpolator {
 
-    public ColorEffectInterpolator(Plugin plugin, int channel, Fixture fixture, Effect effect, int periodTicks, int offsetTicks, int startRGB, SimulatedCue simulatedCue) {
-        super(plugin, channel, 0, 0, 0, fixture, effect, periodTicks, offsetTicks, startRGB, startRGB, simulatedCue);
+    public ColorEffectInterpolator(LxBoard board, int channel, Fixture fixture, Effect effect, int periodTicks, int offsetTicks, int startRGB, SimulatedCue simulatedCue) {
+        super(board, channel, 0, 0, 0, fixture, effect, periodTicks, offsetTicks, startRGB, startRGB, simulatedCue);
     }
 
     @Override
     public void start() {
+        board.debug("Starting color effect interpolator (" + id + ")");
         if (simulatedCue != null) {
             recordToSim();
             stop();
             return;
         }
+        board.debug("CEI: 1");
 
         stop();
         done = false;

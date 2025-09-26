@@ -2,6 +2,7 @@ package tech.blastmc.lights.handler.interpolators;
 
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import tech.blastmc.lights.LxBoard;
 import tech.blastmc.lights.cue.Permutation;
 import tech.blastmc.lights.cue.Permutation.Intensity;
 import tech.blastmc.lights.cue.SimulatedCue;
@@ -12,8 +13,8 @@ import java.util.Objects;
 
 public class IntensityEffectInterpolator extends EffectInterpolator {
 
-    public IntensityEffectInterpolator(Plugin plugin, int channel, Fixture fixture, Effect effect, int periodTicks, int offsetTicks, int startIntensity, SimulatedCue simulatedCue) {
-        super(plugin, channel, 0, 0, 0, fixture, effect, periodTicks, offsetTicks, startIntensity, startIntensity, simulatedCue);
+    public IntensityEffectInterpolator(LxBoard board, int channel, Fixture fixture, Effect effect, int periodTicks, int offsetTicks, int startIntensity, SimulatedCue simulatedCue) {
+        super(board, channel, 0, 0, 0, fixture, effect, periodTicks, offsetTicks, startIntensity, startIntensity, simulatedCue);
     }
 
     @Override
@@ -62,12 +63,6 @@ public class IntensityEffectInterpolator extends EffectInterpolator {
                 }
             }
         }.runTaskTimer(plugin, 0L, 1L);
-    }
-
-    @Override
-    public void stop() {
-        if (task != null) { task.cancel(); task = null; }
-        done = true;
     }
 
     @Override
